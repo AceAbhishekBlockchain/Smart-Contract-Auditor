@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Eye, Zap, Link as LinkIcon, Database } from 'lucide-react'; // Removed ServerCrash
+import { Shield, Eye, Zap, Link as LinkIcon, Database } from 'lucide-react';
 
 import OverviewTab from '@/components/auditor/OverviewTab';
 import UploadCodeTab from '@/components/auditor/UploadCodeTab';
@@ -19,10 +19,11 @@ const AuditorPage = () => {
   const [contractCode, setContractCode] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [fileName, setFileName] = useState('');
-  const [auditSource, setAuditSource] = useState(''); 
+  const [auditSource, setAuditSource] = useState('');
   const [auditResults, setAuditResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
+  // Removed: const [isSavingToSupabase, setIsSavingToSupabase] = useState(false);
 
   const validateAddress = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -36,7 +37,7 @@ const AuditorPage = () => {
     const randomSuffix = Math.random().toString(36).substring(2, 7);
     const isCodeAudit = source === 'code';
     const targetName = isCodeAudit ? (fileName || 'PastedCode.sol') : `Contract at ${input}`;
-    
+
     const numVulnerabilities = Math.floor(Math.random() * 4) + 1;
     const vulnerabilities = [];
     const vulnerabilityTypes = ['Reentrancy', 'Integer Overflow', 'Timestamp Dependence', 'Gas Limit Issue', 'Access Control'];
@@ -67,7 +68,7 @@ const AuditorPage = () => {
         notes: `AI predicts a potential for ${predictionTypes[Math.floor(Math.random() * predictionTypes.length)]} concerning ${targetName}. This is based on simulated pattern analysis.`
       });
     }
-    
+
     return {
       fileName: targetName,
       timestamp: new Date().toISOString(),
@@ -82,12 +83,14 @@ const AuditorPage = () => {
     };
   };
 
+  // Removed: saveAuditToSupabase function
+
   const performAudit = useCallback(async (source, input) => {
     setIsLoading(true);
     setAuditResults(null);
     setAuditSource(source);
     const currentInput = source === 'code' ? (fileName || 'pasted code') : input;
-    
+
     toast({
       title: "Audit Initiated",
       description: `Connecting to AI analysis engine for ${currentInput}...`,
@@ -97,12 +100,12 @@ const AuditorPage = () => {
       await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
 
       const dynamicResults = generateDynamicMockResults(source, input);
-      
+
       const simulatedApiResponse = {
         success: true,
         data: dynamicResults
       };
-      
+
       if (simulatedApiResponse.success && simulatedApiResponse.data) {
         setAuditResults(simulatedApiResponse.data);
         if (activeTab !== 'auditResults' && activeTab !== 'prediction') {
@@ -112,7 +115,7 @@ const AuditorPage = () => {
           title: "Audit Complete!",
           description: `Security audit for ${currentInput} finished. Check the results.`,
         });
-        await saveAuditToSupabase(simulatedApiResponse.data);
+        // Removed: await saveAuditToSupabase(simulatedApiResponse.data);
       } else {
         throw new Error(simulatedApiResponse.error || 'Unknown error from analysis engine simulation.');
       }
@@ -133,7 +136,7 @@ const AuditorPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fileName, activeTab, contractCode, contractAddress]);
+  }, [fileName, activeTab, contractCode, contractAddress]); // Removed saveAuditToSupabase from dependencies
 
 
   const handleAuditCode = useCallback(() => {
@@ -172,7 +175,7 @@ const AuditorPage = () => {
     let debounceTimer;
     if (activeTab === 'auditAddress' && isAddressValid && contractAddress) {
       debounceTimer = setTimeout(() => {
-        if (activeTab === 'auditAddress' && validateAddress(contractAddress)) { 
+        if (activeTab === 'auditAddress' && validateAddress(contractAddress)) {
             performAudit('address', contractAddress);
         }
       }, 1200);
@@ -226,22 +229,22 @@ const AuditorPage = () => {
             </TabsContent>
 
             <TabsContent value="upload" className="mt-8">
-              <UploadCodeTab 
+              <UploadCodeTab
                 contractCode={contractCode}
                 setContractCode={setContractCode}
                 fileName={fileName}
                 setFileName={setFileName}
                 handleAudit={handleAuditCode}
-                isLoading={(isLoading || isSavingToSupabase) && auditSource === 'code'}
+                isLoading={isLoading && auditSource === 'code'}
               />
             </TabsContent>
-            
+
             <TabsContent value="auditAddress" className="mt-8">
               <AuditAddressTab
                 contractAddress={contractAddress}
                 setContractAddress={setContractAddress}
                 handleAudit={handleAuditAddress}
-                isLoading={(isLoading || isSavingToSupabase) && auditSource === 'address'}
+                isLoading={isLoading && auditSource === 'address'}
                 isAddressValid={isAddressValid}
               />
             </TabsContent>
@@ -249,7 +252,7 @@ const AuditorPage = () => {
             <TabsContent value="auditResults" className="mt-8">
               <AuditResultsTab
                 auditResults={auditResults}
-                isLoading={isLoading || isSavingToSupabase}
+                isLoading={isLoading}
                 auditSource={auditSource}
               />
             </TabsContent>
@@ -257,7 +260,7 @@ const AuditorPage = () => {
             <TabsContent value="prediction" className="mt-8">
               <PredictionTab
                 auditResults={auditResults}
-                isLoading={isLoading || isSavingToSupabase}
+                isLoading={isLoading}
               />
             </TabsContent>
 
@@ -266,13 +269,8 @@ const AuditorPage = () => {
             </TabsContent>
           </motion.div>
         </Tabs>
-        
-         {isSavingToSupabase && (
-          <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-lg shadow-lg flex items-center gap-2">
-            <Database className="animate-spin h-5 w-5" />
-            <span>Saving audit to Supabase...</span>
-          </div>
-        )}
+
+        {/* Removed: isSavingToSupabase status indicator */}
 
       </div>
     </div>
