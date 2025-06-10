@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Eye, Zap, Link as LinkIcon, Database } from 'lucide-react'; // Removed ServerCrash
-import { supabase } from '@/lib/supabaseClient';
 
 import OverviewTab from '@/components/auditor/OverviewTab';
 import UploadCodeTab from '@/components/auditor/UploadCodeTab';
@@ -24,7 +23,6 @@ const AuditorPage = () => {
   const [auditResults, setAuditResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
-  const [isSavingToSupabase, setIsSavingToSupabase] = useState(false);
 
   const validateAddress = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -83,46 +81,6 @@ const AuditorPage = () => {
       predictedVulnerabilities
     };
   };
-  
-  const saveAuditToSupabase = async (resultsToSave) => {
-    if (!resultsToSave) return;
-    setIsSavingToSupabase(true);
-    try {
-      const { data, error } = await supabase
-        .from('audit_history')
-        .insert([
-          { 
-            contract_identifier: resultsToSave.fileName,
-            audit_timestamp: resultsToSave.timestamp,
-            vulnerabilities: resultsToSave.vulnerabilities,
-            predictions: resultsToSave.predictedVulnerabilities,
-            summary: resultsToSave.summary,
-            recommendations: resultsToSave.recommendations,
-            source_type: auditSource,
-            raw_input: auditSource === 'code' ? contractCode : contractAddress,
-          }
-        ]);
-
-      if (error) {
-        throw error;
-      }
-      toast({
-        title: "Audit Saved!",
-        description: "Audit results have been successfully saved to your Supabase project.",
-        className: "bg-green-600 text-white",
-      });
-    } catch (error) {
-      console.error("Error saving to Supabase:", error);
-      toast({
-        title: "Supabase Save Failed",
-        description: `Could not save audit results: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingToSupabase(false);
-    }
-  };
-
 
   const performAudit = useCallback(async (source, input) => {
     setIsLoading(true);
